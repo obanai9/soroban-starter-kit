@@ -7,8 +7,9 @@ import { TokenTransferWizard } from './components/TokenTransferWizard';
 import { PortfolioDashboard } from './components/PortfolioDashboard';
 import { SyncStatus, OfflineIndicator } from './components/SyncStatus';
 import { SearchPage } from './components/SearchPage';
-import { ResponsiveNav, Breadcrumb, ContextualNav } from './components';
+import { ResponsiveNav, Breadcrumb, ContextualNav, Dashboard, LiveDataFeed } from './components';
 import { NavItem } from './services/navigation/types';
+import { DataPoint } from './services/visualization/types';
 import { ThemeToggle } from './components/ThemeToggle';
 import { TutorialOverlay, TutorialLauncher } from './components/TutorialOverlay';
 import { InstallBanner, PushToggle } from './components/PWAControls';
@@ -33,10 +34,12 @@ function App(): JSX.Element {
     resolveConflict,
   } = useTransactionQueue();
 
+  const [activeTab, setActiveTab] = useState<'balances' | 'pending' | 'history' | 'search' | 'dashboard'>('balances');
   const [activeTab, setActiveTab] = useState<'balances' | 'pending' | 'history' | 'workflows'>('balances');
   const [activeTab, setActiveTab] = useState<'balances' | 'pending' | 'history' | 'search'>('balances');
   const [isDemoLoading, setIsDemoLoading] = useState(false);
   const [breadcrumbs, setBreadcrumbs] = useState([{ label: 'Home' }]);
+  const [chartData, setChartData] = useState<DataPoint[]>([]);
 
   const navItems: NavItem[] = [
     {
@@ -82,6 +85,15 @@ function App(): JSX.Element {
       onClick: () => {
         setActiveTab('search');
         setBreadcrumbs([{ label: 'Home' }, { label: 'Search' }]);
+      },
+    },
+    {
+      id: 'dashboard',
+      label: 'Dashboard',
+      icon: '📊',
+      onClick: () => {
+        setActiveTab('dashboard');
+        setBreadcrumbs([{ label: 'Home' }, { label: 'Dashboard' }]);
       },
     },
   ];
@@ -457,6 +469,16 @@ function App(): JSX.Element {
               balances={balances}
               escrows={escrows}
             />
+          )}
+
+          {activeTab === 'dashboard' && (
+            <>
+              <h2 className="mb-md">Real-Time Dashboard</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '16px', marginBottom: '16px' }}>
+                <Dashboard />
+                <LiveDataFeed onDataUpdate={(data) => setChartData([...chartData, data])} />
+              </div>
+            </>
           )}
         </main>
       </div>
