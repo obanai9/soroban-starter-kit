@@ -47,3 +47,7 @@ export {
   localizationAnalytics,
   communityTranslations,
 } from "./localization";
+
+// Security Service
+export { securityService, encryptData, decryptData } from "./security";
+export type { SecuritySession, AuditLogEntry, SecurityAlert, SecurityConfig, SecurityState, AuthMethod, AlertSeverity } from "./security";
