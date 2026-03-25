@@ -7,7 +7,7 @@ import { TokenTransferWizard } from './components/TokenTransferWizard';
 import { PortfolioDashboard } from './components/PortfolioDashboard';
 import { SyncStatus, OfflineIndicator } from './components/SyncStatus';
 import { SearchPage } from './components/SearchPage';
-import { ResponsiveNav, Breadcrumb, ContextualNav, Dashboard, LiveDataFeed } from './components';
+import { ResponsiveNav, Breadcrumb, ContextualNav, Dashboard, LiveDataFeed, NotificationCenter, NotificationPreferences, AlertRules } from './components';
 import { NavItem } from './services/navigation/types';
 import { DataPoint } from './services/visualization/types';
 import { ThemeToggle } from './components/ThemeToggle';
@@ -34,6 +34,7 @@ function App(): JSX.Element {
     resolveConflict,
   } = useTransactionQueue();
 
+  const [activeTab, setActiveTab] = useState<'balances' | 'pending' | 'history' | 'search' | 'dashboard' | 'settings'>('balances');
   const [activeTab, setActiveTab] = useState<'balances' | 'pending' | 'history' | 'search' | 'dashboard'>('balances');
   const [activeTab, setActiveTab] = useState<'balances' | 'pending' | 'history' | 'workflows'>('balances');
   const [activeTab, setActiveTab] = useState<'balances' | 'pending' | 'history' | 'search'>('balances');
@@ -94,6 +95,15 @@ function App(): JSX.Element {
       onClick: () => {
         setActiveTab('dashboard');
         setBreadcrumbs([{ label: 'Home' }, { label: 'Dashboard' }]);
+      },
+    },
+    {
+      id: 'settings',
+      label: 'Settings',
+      icon: '⚙️',
+      onClick: () => {
+        setActiveTab('settings');
+        setBreadcrumbs([{ label: 'Home' }, { label: 'Settings' }]);
       },
     },
   ];
@@ -176,6 +186,7 @@ function App(): JSX.Element {
         <div className="flex items-center gap-md">
           <OfflineIndicator />
           <ConnectivityStatus />
+          <NotificationCenter />
           <PushToggle />
           <TutorialLauncher />
           <ThemeToggle />
@@ -477,6 +488,16 @@ function App(): JSX.Element {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '16px', marginBottom: '16px' }}>
                 <Dashboard />
                 <LiveDataFeed onDataUpdate={(data) => setChartData([...chartData, data])} />
+              </div>
+            </>
+          )}
+
+          {activeTab === 'settings' && (
+            <>
+              <h2 className="mb-md">Settings</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <NotificationPreferences userId="user-1" />
+                <AlertRules />
               </div>
             </>
           )}
