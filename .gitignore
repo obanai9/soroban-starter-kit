@@ -1,3 +1,5 @@
+node_modules
+docs-report.json/
 # ── Node ──────────────────────────────────────────────────────────────────────
 node_modules/
 dist/
