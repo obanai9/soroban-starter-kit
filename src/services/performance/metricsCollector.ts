@@ -115,11 +115,11 @@ class PerformanceMetricsCollector {
       vitals: { ...this.vitals },
     };
 
-    if (performance.memory) {
+    if ((performance as any).memory) {
       snapshot.memory = {
-        usedJSHeapSize: performance.memory.usedJSHeapSize,
-        totalJSHeapSize: performance.memory.totalJSHeapSize,
-        jsHeapSizeLimit: performance.memory.jsHeapSizeLimit,
+        usedJSHeapSize: (performance as any).memory.usedJSHeapSize,
+        totalJSHeapSize: (performance as any).memory.totalJSHeapSize,
+        jsHeapSizeLimit: (performance as any).memory.jsHeapSizeLimit,
       };
     }
 
@@ -133,12 +133,16 @@ class PerformanceMetricsCollector {
    * Record custom metric
    */
   recordMetric(name: string, value: number, unit: string = 'ms'): void {
-    this.metrics.push({
+    const metric: PerformanceMetric = {
       name,
       value,
       timestamp: Date.now(),
       unit,
     });
+    };
+    this.metrics.push(metric);
+    // Immediately capture a snapshot so getSnapshots() reflects the new metric
+    this.collectSnapshot();
   }
 
   /**
