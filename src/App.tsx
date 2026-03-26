@@ -23,6 +23,7 @@ import { ThemeCustomizer } from './components/ThemeCustomizer';
 import { ThemeToggle } from './components/ThemeToggle';
 import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { TutorialOverlay, TutorialLauncher } from './components/TutorialOverlay';
+import { WalletButton } from './components/WalletButton';
 import { HelpPanel } from './components/HelpPanel';
 import { InstallBanner, PushToggle } from './components/PWAControls';
 import { InstallBanner } from './components/PWAControls';
@@ -47,6 +48,7 @@ type ActiveTab =
   | 'table'
   | 'search'
   | 'dashboard'
+  | 'settings';
   | 'settings'
   | 'help';
   | 'settings';
@@ -237,6 +239,8 @@ function App(): JSX.Element {
       icon: '⚙️',
       onClick: () => navigate('settings', [{ label: 'Home' }, { label: 'Settings' }]),
     },
+  ];
+    },
     {
       id: 'help',
       label: 'Help',
@@ -369,6 +373,8 @@ function App(): JSX.Element {
           <OfflineIndicator />
           <ConnectivityStatus />
           <NotificationCenter />
+          <PushToggle />
+          <WalletButton />
           <PWADashboard />
           <TutorialLauncher />
           <ThemeCustomizer />
@@ -647,6 +653,138 @@ function App(): JSX.Element {
                     { id: 'add', label: 'Add Balance', icon: '➕', onClick: () => {} },
                   ]}
                 />
+              )}
+
+              <div className="grid" style={{ gridTemplateColumns: '1fr 300px', gap: 'var(--spacing-lg)' }}>
+                <div>
+                  {activeTab === 'balances' && (
+                    <>
+                      {!isOnline && (
+                        <p className="text-warning mb-md">
+                          You're offline. Showing cached balances from your last online session.
+                        </p>
+                      )}
+                      <AdvancedBalanceDisplay
+                        balances={balances}
+                        emptyMessage="No cached balances. Connect to the network to fetch your balances."
+                      />
+                    </>
+                  )}
+
+                  {activeTab === 'analytics' && <PortfolioDashboard />}
+
+                  {activeTab === 'transfer' && <TokenTransferWizard />}
+
+                  {activeTab === 'build' && <TransactionFormBuilder />}
+
+                  {activeTab === 'pending' && (
+                    <>
+                      <h2 className="mb-md">Pending Transactions</h2>
+                      {!isOnline && (
+                        <p className="text-warning mb-md">
+                          You're offline. Transactions will be queued and submitted when connection is restored.
+                        </p>
+                      )}
+                      <TransactionList
+                        transactions={pendingTransactions}
+                        onRetry={retryTransaction}
+                        onDelete={deleteTransaction}
+                        onResolveConflict={resolveConflict}
+                        emptyMessage="No pending transactions."
+                      />
+                    </>
+                  )}
+
+                  {activeTab === 'history' && (
+                    <>
+                      <h2 className="mb-md">Synced Transactions</h2>
+                      <TransactionList
+                        transactions={syncedTransactions}
+                        emptyMessage="No synced transactions yet."
+                      />
+                    </>
+                  )}
+
+                  {activeTab === 'workflows' && (
+                    <WorkflowLauncher
+                      onComplete={(templateId, values) =>
+                        console.info('Workflow completed:', templateId, values)
+                      }
+                    />
+                  )}
+
+                  {activeTab === 'table' && (
+                    <DataTable
+                      caption="All Transactions"
+                      data={[...pendingTransactions, ...syncedTransactions]}
+                      columns={txColumns}
+                      getRowId={(r) => r.id}
+                      bulkActions={[
+                        {
+                          label: 'Delete selected',
+                          icon: '🗑',
+                          action: (rows) => rows.forEach((r) => deleteTransaction(r.id)),
+                        },
+                      ]}
+                      exportFormats={['csv', 'json']}
+                      renderExpanded={(r) => (
+                        <pre style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', whiteSpace: 'pre-wrap' }}>
+                          {JSON.stringify(r.params, null, 2)}
+                        </pre>
+                      )}
+                    />
+                  )}
+
+                  {activeTab === 'search' && (
+                    <SearchPage
+                      transactions={[...pendingTransactions, ...syncedTransactions]}
+                      balances={balances}
+                      escrows={escrows}
+                    />
+                  )}
+
+                  {activeTab === 'dashboard' && (
+                    <>
+                      <h2 className="mb-md">Real-Time Dashboard</h2>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '16px', marginBottom: '16px' }}>
+                        <Dashboard />
+                        <LiveDataFeed onDataUpdate={(data) => setChartData([...chartData, data])} />
+                      </div>
+                    </>
+                  )}
+
+                  {activeTab === 'settings' && (
+                    <>
+                      <h2 className="mb-md">Settings</h2>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                        <NotificationPreferences userId="user-1" />
+                        <AlertRules />
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Sidebar */}
+                <div>
+                  <SyncStatus />
+                  <div className="card mt-lg">
+                    <div className="card-header">
+                      <span className="card-title">Storage</span>
+                    </div>
+                    <div className="flex flex-col gap-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted">Cached Items</span>
+                        <span>{balances.length + escrows.length}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted">Transactions</span>
+                        <span>{pendingTransactions.length + syncedTransactions.length}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
               )}
 
               <div className="grid" style={{ gridTemplateColumns: '1fr 300px', gap: 'var(--spacing-lg)' }}>
