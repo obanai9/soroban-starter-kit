@@ -9,6 +9,7 @@ import { PortfolioDashboard } from './components/PortfolioDashboard';
 import { SyncStatus, OfflineIndicator } from './components/SyncStatus';
 import { SearchPage } from './components/SearchPage';
 import { EscrowManagement } from './components/EscrowManagement';
+import { BackupRecovery } from './components/BackupRecovery';
 import { ResponsiveNav, Breadcrumb, ContextualNav, Dashboard, LiveDataFeed, NotificationCenter, NotificationPreferences, AlertRules } from './components';
 import { NavItem } from './services/navigation/types';
 import { DataPoint } from './services/visualization/types';
@@ -39,7 +40,7 @@ function App(): JSX.Element {
     resolveConflict,
   } = useTransactionQueue();
 
-  const [activeTab, setActiveTab] = useState<'balances' | 'pending' | 'history' | 'workflows' | 'table' | 'analytics' | 'transfer' | 'build' | 'search' | 'dashboard' | 'settings' | 'escrow'>('balances');
+  const [activeTab, setActiveTab] = useState<'balances' | 'pending' | 'history' | 'workflows' | 'table' | 'analytics' | 'transfer' | 'build' | 'search' | 'dashboard' | 'settings' | 'escrow' | 'backup'>('balances');
   const [isDemoLoading, setIsDemoLoading] = useState(false);
   const [builderMode, setBuilderMode] = useState(false);
 
@@ -329,6 +330,13 @@ function App(): JSX.Element {
           >
             🔐 Escrow
           </button>
+          <button
+            onClick={() => setActiveTab('backup')}
+            className={activeTab === 'backup' ? 'btn btn-primary' : 'btn btn-secondary'}
+            style={{ backgroundColor: activeTab === 'backup' ? 'var(--color-highlight)' : 'transparent' }}
+          >
+            💾 Backup &amp; Recovery
+          </button>
         </div>
 
         {/* Content Area */}
@@ -421,6 +429,7 @@ function App(): JSX.Element {
             )}
 
             {activeTab === 'escrow' && <EscrowManagement />}
+            {activeTab === 'backup' && <BackupRecovery />}
           </div>
 
           {/* Sidebar */}

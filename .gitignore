@@ -31,3 +31,18 @@ coverage/
 # OS
 .DS_Store
 Thumbs.db
+
+# Test & lint reports
+coverage/
+lint-report.json
+audit-report.json
+*.lcov
+
+# Vitest / Vite cache
+.vitest-cache/
+.vite/
+
+# PWA generated files
+public/sw.js
+public/workbox-*.js
+public/sw.js.map
