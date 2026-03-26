@@ -21,3 +21,13 @@ export {
   usePerformanceComparison,
   usePerformanceBudgets,
 } from './usePerformance';
+
+export {
+  useAccessibilitySettings,
+  useAccessibilityAudit,
+  useVoiceCommands,
+  useKeyboardNavigation,
+  useComplianceMonitor,
+  useContrastChecker,
+  useA11yFeedback,
+} from './useAccessibility';

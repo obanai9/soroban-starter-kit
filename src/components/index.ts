@@ -28,3 +28,4 @@ export { SecurityDashboard } from './SecurityDashboard';
 export { TransactionHistory } from './TransactionHistory';
 export { ContractInteraction } from './ContractInteraction';
 export { PerformanceDashboard } from './PerformanceDashboard';
+export { AccessibilityDashboard } from './AccessibilityDashboard';

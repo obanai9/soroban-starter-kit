@@ -25,6 +25,7 @@ const PortfolioDashboard = lazy(() => import('./components/PortfolioDashboard').
 const DashboardBuilder = lazy(() => import('./builder/DashboardBuilder').then(m => ({ default: m.DashboardBuilder })));
 const WorkflowLauncher = lazy(() => import('./workflow').then(m => ({ default: m.WorkflowLauncher })));
 const PerformanceDashboard = lazy(() => import('./components/PerformanceDashboard').then(m => ({ default: m.PerformanceDashboard })));
+const AccessibilityDashboard = lazy(() => import('./components/AccessibilityDashboard').then(m => ({ default: m.AccessibilityDashboard })));
 
 const LazyFallback = () => <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>Loading…</div>;
 
@@ -135,6 +136,15 @@ function App(): JSX.Element {
       onClick: () => {
         setActiveTab('performance' as any);
         setBreadcrumbs([{ label: 'Home' }, { label: 'Performance' }]);
+      },
+    },
+    {
+      id: 'accessibility',
+      label: 'Accessibility',
+      icon: '♿',
+      onClick: () => {
+        setActiveTab('accessibility' as any);
+        setBreadcrumbs([{ label: 'Home' }, { label: 'Accessibility' }]);
       },
     },
   ];
@@ -569,6 +579,12 @@ function App(): JSX.Element {
           {(activeTab as string) === 'performance' && (
             <Suspense fallback={<LazyFallback />}>
               <PerformanceDashboard />
+            </Suspense>
+          )}
+
+          {(activeTab as string) === 'accessibility' && (
+            <Suspense fallback={<LazyFallback />}>
+              <AccessibilityDashboard />
             </Suspense>
           )}
         </main>
