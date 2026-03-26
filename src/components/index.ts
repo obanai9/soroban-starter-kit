@@ -33,6 +33,7 @@ export { ApiGatewayPortal } from './ApiGatewayPortal';
 export { SecurityDashboard } from './SecurityDashboard';
 export { TransactionHistory } from './TransactionHistory';
 export { ContractInteraction } from './ContractInteraction';
+export { WalletManager } from './WalletManager';
 export { TestDashboard } from './TestDashboard';
 export { SearchAnalyticsDashboard } from './SearchAnalyticsDashboard';
 export { WalletButton } from './WalletButton';
