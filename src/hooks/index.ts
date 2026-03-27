@@ -34,3 +34,6 @@ export {
 } from "./useStateOptimization";
 
 export { useI18n } from "./useI18n";
+
+export { useResponsive, useBreakpoint, useMediaQuery } from './useResponsive';
+export type { ResponsiveState, Breakpoint, DeviceType, Orientation, PointerType } from './useResponsive';
