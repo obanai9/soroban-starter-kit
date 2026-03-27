@@ -34,3 +34,9 @@ export {
 } from "./useStateOptimization";
 
 export { useI18n } from "./useI18n";
+
+export { useTokenMetadata } from './useTokenMetadata';
+export type { UseTokenMetadataParams, UseTokenMetadataResult } from './useTokenMetadata';
+
+export { useAllowances } from './useAllowances';
+export type { UseAllowancesParams, UseAllowancesResult } from './useAllowances';
