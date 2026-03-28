@@ -1,4 +1,4 @@
-// ─── Data sources ─────────────────────────────────────────────────────────────
+﻿// ─── Data sources ─────────────────────────────────────────────────────────────
 
 export type DataSourceType = 'transactions' | 'balances' | 'escrows' | 'users' | 'performance' | 'custom';
 
@@ -95,8 +95,28 @@ export interface BIInsight {
   description: string;
   metric: string;
   value: number;
-  change?: number;       // % change vs previous period
+  change?: number;
   severity: 'info' | 'warning' | 'positive';
+  generatedAt: number;
+}
+
+// ─── Comparative analysis ─────────────────────────────────────────────────────
+
+export interface ComparisonMetric {
+  field: string;
+  label: string;
+  current: number;
+  previous: number;
+  change: number;
+  changePct: number;
+  trend: 'up' | 'down' | 'flat';
+}
+
+export interface ComparisonResult {
+  reportId: string;
+  currentPeriod: { label: string; rows: ReportRow[]; summary: Record<string, number | string> };
+  previousPeriod: { label: string; rows: ReportRow[]; summary: Record<string, number | string> };
+  metrics: ComparisonMetric[];
   generatedAt: number;
 }
 
@@ -105,7 +125,8 @@ export interface BIInsight {
 export interface AnalyticsState {
   reports: ReportDefinition[];
   schedules: ScheduledReport[];
-  results: Record<string, ReportResult>;   // keyed by reportId
+  results: Record<string, ReportResult>;
+  comparisons: Record<string, ComparisonResult>;
   insights: BIInsight[];
   lastInsightRefresh?: number;
 }

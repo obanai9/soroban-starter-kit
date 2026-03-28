@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { analyticsService, DATA_SOURCES } from '../services/analytics/analyticsService';
 import type {
-  AnalyticsState, ReportDefinition, ScheduleFrequency, ExportFormat, ReportResult,
+  AnalyticsState, ReportDefinition, ScheduleFrequency, ExportFormat, ReportResult, ComparisonResult,
 } from '../services/analytics/types';
 
 interface AnalyticsContextType extends AnalyticsState {
@@ -10,6 +10,7 @@ interface AnalyticsContextType extends AnalyticsState {
   updateReport: (id: string, patch: Partial<ReportDefinition>) => void;
   deleteReport: (id: string) => void;
   runReport: (id: string) => ReportResult;
+  compareReports: (id: string) => ComparisonResult;
   scheduleReport: (reportId: string, freq: ScheduleFrequency, recipients: string[], format: ExportFormat) => void;
   updateSchedule: (id: string, patch: Partial<import('../services/analytics/types').ScheduledReport>) => void;
   deleteSchedule: (id: string) => void;
@@ -31,6 +32,7 @@ export function AnalyticsProvider({ children }: { children: ReactNode }): JSX.El
     updateReport: (id, p) => analyticsService.updateReport(id, p),
     deleteReport: (id) => analyticsService.deleteReport(id),
     runReport: (id) => analyticsService.runReport(id),
+    compareReports: (id) => analyticsService.compareReports(id),
     scheduleReport: (rid, f, r, fmt) => analyticsService.scheduleReport(rid, f, r, fmt),
     updateSchedule: (id, p) => analyticsService.updateSchedule(id, p),
     deleteSchedule: (id) => analyticsService.deleteSchedule(id),

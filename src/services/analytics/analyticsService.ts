@@ -1,7 +1,7 @@
 import {
   AnalyticsState, ReportDefinition, ReportResult, ReportRow,
   ScheduledReport, ScheduleFrequency, ExportFormat, BIInsight,
-  DataSource, DataSourceType, AggregationFn,
+  DataSource, DataSourceType, AggregationFn, ComparisonResult, ComparisonMetric,
 } from './types';
 
 const STORAGE_KEY = 'bi_analytics_state';
@@ -98,7 +98,7 @@ class AnalyticsService {
   }
 
   private defaultState(): AnalyticsState {
-    return { reports: seedReports(), schedules: [], results: {}, insights: [] };
+    return { reports: seedReports(), schedules: [], results: {}, comparisons: {}, insights: [] };
   }
 
   private load(): AnalyticsState | null {
@@ -294,8 +294,62 @@ class AnalyticsService {
 
   deleteReport(id: string) {
     const { [id]: _, ...results } = this.state.results;
-    this.state = { ...this.state, reports: this.state.reports.filter(r => r.id !== id), results };
+    const { [id]: _c, ...comparisons } = this.state.comparisons;
+    this.state = { ...this.state, reports: this.state.reports.filter(r => r.id !== id), results, comparisons };
     this.emit();
+  }
+
+  // ── Comparative analysis ───────────────────────────────────────────────────
+
+  compareReports(reportId: string): ComparisonResult {
+    const report = this.state.reports.find(r => r.id === reportId);
+    if (!report) throw new Error('Report not found');
+
+    const allRows = this.fetchData(report.dataSource);
+    const now = Date.now();
+    const midpoint = now - 7 * 86400000; // split: last 7 days vs prior 7 days
+    const start = now - 14 * 86400000;
+
+    const currentRows = allRows.filter((_, i) => i >= Math.floor(allRows.length / 2));
+    const previousRows = allRows.filter((_, i) => i < Math.floor(allRows.length / 2));
+
+    const summarize = (rows: ReportRow[]): Record<string, number | string> => {
+      const s: Record<string, number | string> = { total_rows: rows.length };
+      for (const col of report.columns) {
+        if (col.aggregation) {
+          s[col.label] = this.aggregate(rows.map(r => r[col.field]), col.aggregation);
+        }
+      }
+      return s;
+    };
+
+    const currentSummary = summarize(currentRows);
+    const previousSummary = summarize(previousRows);
+
+    const metrics: ComparisonMetric[] = report.columns
+      .filter(c => c.aggregation && c.aggregation !== 'distinct')
+      .map(c => {
+        const cur = Number(currentSummary[c.label] ?? 0);
+        const prev = Number(previousSummary[c.label] ?? 0);
+        const change = cur - prev;
+        const changePct = prev !== 0 ? Math.round((change / prev) * 1000) / 10 : 0;
+        return {
+          field: c.field, label: c.label, current: cur, previous: prev,
+          change, changePct,
+          trend: Math.abs(changePct) < 2 ? 'flat' : changePct > 0 ? 'up' : 'down',
+        };
+      });
+
+    const result: ComparisonResult = {
+      reportId, generatedAt: now,
+      currentPeriod: { label: 'Last 7 days', rows: currentRows, summary: currentSummary },
+      previousPeriod: { label: 'Prior 7 days', rows: previousRows, summary: previousSummary },
+      metrics,
+    };
+
+    this.state = { ...this.state, comparisons: { ...this.state.comparisons, [reportId]: result } };
+    this.emit();
+    return result;
   }
 
   // ── Schedules ──────────────────────────────────────────────────────────────
