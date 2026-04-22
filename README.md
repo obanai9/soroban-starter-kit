@@ -6,8 +6,8 @@ A curated collection of production-ready Soroban smart contract templates. These
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/soroban-contract-templates.git
-cd soroban-contract-templates
+git clone https://github.com/Fidelis900/soroban-starter-kit.git
+cd soroban-starter-kit
 
 # Build a contract (example: token)
 cd contracts/token
