@@ -1,7 +1,7 @@
 #![no_std]
 
 use soroban_sdk::{
-    contract, contractimpl, contracttype, token, Address, Env, Symbol,
+    contract, contracterror, contractimpl, contracttype, token, Address, Env, Symbol,
 };
  /// script
 /// Escrow contract for secure two-party transactions
@@ -29,18 +29,19 @@ pub enum DataKey {
 }
 
 #[contracttype]
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum EscrowState {
     Created = 0,
     Funded = 1,
     Delivered = 2,
     Completed = 3,
     Refunded = 4,
-    Disputed = 5,
+    Cancelled = 5,
 }
 
 /// Custom errors for the escrow contract
-#[contracttype]
+#[contracterror]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum EscrowError {
     NotAuthorized = 1,
     InvalidState = 2,
@@ -215,6 +216,57 @@ impl EscrowContract {
         } else {
             Self::refund_to_buyer(env)?;
         }
+
+        Ok(())
+    }
+
+    /// Buyer partially releases funds to seller, reducing the stored amount
+    pub fn release_partial(env: Env, amount: i128) -> Result<(), EscrowError> {
+        let state: EscrowState = env.storage().instance()
+            .get(&DataKey::State)
+            .ok_or(EscrowError::NotInitialized)?;
+
+        if !matches!(state, EscrowState::Funded | EscrowState::Delivered) {
+            return Err(EscrowError::InvalidState);
+        }
+
+        let buyer: Address = env.storage().instance().get(&DataKey::Buyer).unwrap();
+        buyer.require_auth();
+
+        let stored_amount: i128 = env.storage().instance().get(&DataKey::Amount).unwrap();
+        if amount > stored_amount {
+            return Err(EscrowError::InsufficientFunds);
+        }
+
+        let seller: Address = env.storage().instance().get(&DataKey::Seller).unwrap();
+        let token_contract: Address = env.storage().instance().get(&DataKey::TokenContract).unwrap();
+
+        let token_client = token::Client::new(&env, &token_contract);
+        token_client.transfer(&env.current_contract_address(), &seller, &amount);
+
+        env.storage().instance().set(&DataKey::Amount, &(stored_amount - amount));
+
+        env.events().publish((Symbol::new(&env, "partial_release"), seller), amount);
+
+        Ok(())
+    }
+
+    /// Buyer cancels an unfunded escrow in Created state
+    pub fn cancel(env: Env) -> Result<(), EscrowError> {
+        let state: EscrowState = env.storage().instance()
+            .get(&DataKey::State)
+            .ok_or(EscrowError::NotInitialized)?;
+
+        if state != EscrowState::Created {
+            return Err(EscrowError::InvalidState);
+        }
+
+        let buyer: Address = env.storage().instance().get(&DataKey::Buyer).unwrap();
+        buyer.require_auth();
+
+        env.storage().instance().set(&DataKey::State, &EscrowState::Cancelled);
+
+        env.events().publish((Symbol::new(&env, "escrow_cancelled"), buyer), ());
 
         Ok(())
     }
