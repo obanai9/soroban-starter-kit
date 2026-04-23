@@ -1,12 +1,22 @@
 #![cfg(test)]
 
 use super::*;
-use soroban_sdk::{testutils::Address as _, Address, Env};
+use soroban_sdk::{testutils::{Address as _, Deployer as _, Ledger as _}, token::StellarAssetClient, Address, Env};
 
 fn create_escrow_contract<'a>(env: &Env) -> (EscrowContractClient<'a>, Address) {
     let contract_address = env.register_contract(None, EscrowContract);
     let client = EscrowContractClient::new(env, &contract_address);
     (client, contract_address)
+}
+
+/// Create a real SAC token, mint `amount` to `buyer`, and return the token address.
+fn setup_token(env: &Env, buyer: &Address, amount: i128) -> Address {
+    let admin = Address::generate(env);
+    let sac = env.register_stellar_asset_contract_v2(admin.clone());
+    let token_address = sac.address();
+    let token_admin = StellarAssetClient::new(env, &token_address);
+    token_admin.mint(buyer, &amount);
+    token_address
 }
 
 #[test]
@@ -40,7 +50,7 @@ fn test_initialize_escrow() {
 }
 
 #[test]
-#[should_panic(expected = "AlreadyInitialized")]
+#[should_panic(expected = "Error(Contract, #5)")]
 fn test_initialize_twice() {
     let env = Env::default();
     env.mock_all_auths();
@@ -66,6 +76,8 @@ fn test_initialize_twice() {
 fn test_initialize_past_deadline() {
     let env = Env::default();
     env.mock_all_auths();
+    // Start at sequence 10 so we can subtract 1 without overflow
+    env.ledger().with_mut(|l| l.sequence_number = 10);
 
     let buyer = Address::generate(&env);
     let seller = Address::generate(&env);
@@ -88,9 +100,9 @@ fn test_mark_delivered() {
     let buyer = Address::generate(&env);
     let seller = Address::generate(&env);
     let arbiter = Address::generate(&env);
-    let token_contract = Address::generate(&env);
     let amount = 1000i128;
     let deadline = env.ledger().sequence() + 100;
+    let token_contract = setup_token(&env, &buyer, amount);
 
     let (client, _) = create_escrow_contract(&env);
 
@@ -111,9 +123,9 @@ fn test_approve_delivery() {
     let buyer = Address::generate(&env);
     let seller = Address::generate(&env);
     let arbiter = Address::generate(&env);
-    let token_contract = Address::generate(&env);
     let amount = 1000i128;
     let deadline = env.ledger().sequence() + 100;
+    let token_contract = setup_token(&env, &buyer, amount);
 
     let (client, _) = create_escrow_contract(&env);
 
@@ -155,6 +167,41 @@ fn test_deadline_passed() {
 }
 
 #[test]
+fn test_instance_ttl_expiry() {
+    let env = Env::default();
+    env.mock_all_auths();
+    // Set small TTLs so we can advance past them easily
+    env.ledger().with_mut(|l| {
+        l.sequence_number = 100;
+        l.min_temp_entry_ttl = 10;
+        l.min_persistent_entry_ttl = 50;
+        l.max_entry_ttl = 500;
+    });
+
+    let buyer = Address::generate(&env);
+    let seller = Address::generate(&env);
+    let arbiter = Address::generate(&env);
+    let token_contract = Address::generate(&env);
+    let amount = 1000i128;
+    let deadline = env.ledger().sequence() + 60;
+
+    let (client, contract_address) = create_escrow_contract(&env);
+
+    client.initialize(&buyer, &seller, &arbiter, &token_contract, &amount, &deadline);
+
+    // Verify instance TTL = min_persistent_entry_ttl - 1 = 49
+    let initial_ttl = env.deployer().get_contract_instance_ttl(&contract_address);
+    assert_eq!(initial_ttl, 49);
+
+    // Advance ledger to reduce TTL to 0 (advance by 49 ledgers: 100 → 149, TTL = 0)
+    env.ledger().with_mut(|l| l.sequence_number = 100 + 49);
+
+    // Instance TTL has reached 0; it is now archived
+    let expired_ttl = env.deployer().get_contract_instance_ttl(&contract_address);
+    assert_eq!(expired_ttl, 0);
+}
+
+#[test]
 fn test_arbiter_resolve_to_seller() {
     let env = Env::default();
     env.mock_all_auths();
@@ -162,9 +209,9 @@ fn test_arbiter_resolve_to_seller() {
     let buyer = Address::generate(&env);
     let seller = Address::generate(&env);
     let arbiter = Address::generate(&env);
-    let token_contract = Address::generate(&env);
     let amount = 1000i128;
     let deadline = env.ledger().sequence() + 100;
+    let token_contract = setup_token(&env, &buyer, amount);
 
     let (client, _) = create_escrow_contract(&env);
 
@@ -187,9 +234,9 @@ fn test_arbiter_resolve_to_buyer() {
     let buyer = Address::generate(&env);
     let seller = Address::generate(&env);
     let arbiter = Address::generate(&env);
-    let token_contract = Address::generate(&env);
     let amount = 1000i128;
     let deadline = env.ledger().sequence() + 100;
+    let token_contract = setup_token(&env, &buyer, amount);
 
     let (client, _) = create_escrow_contract(&env);
 

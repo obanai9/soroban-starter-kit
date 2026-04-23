@@ -7,7 +7,7 @@ description = "A production-ready Soroban token contract template"
 license = "Apache-2.0"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 soroban-sdk = { workspace = true }
