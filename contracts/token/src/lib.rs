@@ -54,6 +54,7 @@ use storage::MetadataKey::{Decimals, Name, Symbol};
 #[contract]
 pub struct TokenContract;
 /// Custom errors for the token contract
+#[contracttype]
 #[contracterror]
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum TokenError {
@@ -62,6 +63,7 @@ pub enum TokenError {
     Unauthorized = 3,
     AlreadyInitialized = 4,
     NotInitialized = 5,
+    Overflow = 6,
 }
 
 #[contractimpl]
@@ -116,11 +118,18 @@ impl TokenContract {
         admin.require_auth();
 
         let balance = Self::balance_of(env.clone(), to.clone());
+        let new_balance = balance.checked_add(amount).ok_or(TokenError::Overflow)?;
         env.storage().persistent().set(&DataKey::Balance(to.clone()), &(balance + amount));
         let new_balance = balance + amount;
         env.storage().persistent().set(&DataKey::Balance(to.clone()), &new_balance);
         bump_persistent(&env, &DataKey::Balance(to.clone()));
 
+        // Update total supply
+        let total_supply: i128 = env.storage().instance()
+            .get(&DataKey::TotalSupply)
+            .unwrap_or(0);
+        let new_supply = total_supply.checked_add(amount).ok_or(TokenError::Overflow)?;
+        env.storage().instance().set(&DataKey::TotalSupply, &new_supply);
         let total_supply: i128 = env.storage().instance().get(&DataKey::TotalSupply).unwrap_or(0);
         env.storage().instance().set(&DataKey::TotalSupply, &(total_supply + amount));
         bump_instance(&env);
@@ -146,7 +155,7 @@ impl TokenContract {
         }
 
         // Update balance
-        let new_balance = balance - amount;
+        let new_balance = balance.checked_sub(amount).ok_or(TokenError::Overflow)?;
         env.storage().persistent().set(&DataKey::Balance(from.clone()), &new_balance);
         bump_persistent(&env, &DataKey::Balance(from.clone()));
 
@@ -154,6 +163,8 @@ impl TokenContract {
         let total_supply: i128 = env.storage().instance()
             .get(&DataKey::TotalSupply)
             .unwrap_or(0);
+        let new_supply = total_supply.checked_sub(amount).ok_or(TokenError::Overflow)?;
+        env.storage().instance().set(&DataKey::TotalSupply, &new_supply);
         env.storage().instance().set(&DataKey::TotalSupply, &(total_supply - amount));
         bump_instance(&env);
 
@@ -431,6 +442,11 @@ impl TokenContract {
         let to_balance = Self::balance_of(env.clone(), to.clone());
         env.storage().persistent().set(&DataKey::Balance(to.clone()), &(to_balance + amount));
 
+        // Update balances
+        env.storage().persistent().set(&DataKey::Balance(from.clone()), &(from_balance.checked_sub(amount).ok_or(TokenError::Overflow)?));
+        
+        let to_balance = Self::balance_of(env.clone(), to.clone());
+        env.storage().persistent().set(&DataKey::Balance(to.clone()), &(to_balance.checked_add(amount).ok_or(TokenError::Overflow)?));
         env.storage().persistent().set(&DataKey::Balance(from.clone()), &(from_balance - amount));
 
         bump_persistent(&env, &DataKey::Balance(from.clone()));
