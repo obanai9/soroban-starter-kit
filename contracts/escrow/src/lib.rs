@@ -10,7 +10,7 @@ pub use errors::EscrowError;
 pub use storage::{DataKey, EscrowInfo, EscrowState};
 
 use admin::require_admin;
-use storage::DataKey::{Amount, Arbiter, Buyer, BuyerApproved, Deadline, Seller, SellerDelivered, State, TokenContract, Paused};
+use storage::DataKey::{Amount, Arbiter, Buyer, BuyerApproved, Deadline, Seller, SellerDelivered, State, TokenContract, Paused, Version};
 
 use soroban_sdk::{contract, contractimpl, token, Address, Env, Symbol};
 
@@ -20,6 +20,7 @@ const BUMP_THRESHOLD: u32 = 120_960;
 const BUMP_AMOUNT: u32 = 518_400;
 /// Minimum ledgers from now a deadline must be set to (~8 minutes at 5s/ledger).
 const MIN_DEADLINE_BUFFER: u32 = 100;
+const CONTRACT_VERSION: u32 = 1;
 
 fn bump_instance(env: &Env) {
     env.storage().instance().extend_ttl(BUMP_THRESHOLD, BUMP_AMOUNT);
@@ -59,6 +60,7 @@ impl EscrowContract {
         env.storage().instance().set(&State, &EscrowState::Created);
         env.storage().instance().set(&BuyerApproved, &false);
         env.storage().instance().set(&SellerDelivered, &false);
+        env.storage().instance().set(&Version, &CONTRACT_VERSION);
         bump_instance(&env);
         events::escrow_created(&env, &buyer, &seller, amount);
         Ok(())
@@ -271,6 +273,19 @@ impl EscrowContract {
     /// Check if the contract is paused.
     pub fn is_paused(env: Env) -> bool {
         env.storage().instance().get(&Paused).unwrap_or(false)
+    }
+
+    /// Return the contract version.
+    pub fn version(env: Env) -> u32 {
+        env.storage().instance().get(&Version).unwrap_or(CONTRACT_VERSION)
+    }
+
+    /// Upgrade the contract to a new WASM hash. Admin only.
+    pub fn upgrade(env: Env, new_wasm_hash: soroban_sdk::BytesN<32>) -> Result<(), EscrowError> {
+        let admin = require_admin(&env)?;
+        admin.require_auth();
+        env.deployer().update_current_contract_wasm(new_wasm_hash);
+        Ok(())
     }
 }
 

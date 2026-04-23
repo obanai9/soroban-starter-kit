@@ -9,6 +9,7 @@ pub enum DataKey {
     Metadata(MetadataKey),
     TotalSupply,
     Paused,
+    Version,
 }
 
 #[contracttype]

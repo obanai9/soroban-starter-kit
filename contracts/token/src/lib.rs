@@ -13,11 +13,12 @@ use admin::require_admin;
 use soroban_sdk::{
     contract, contractimpl, panic_with_error, token, Address, Env, String, Symbol,
 };
-use storage::DataKey::{Admin, Allowance, Balance, Metadata, TotalSupply, Paused};
+use storage::DataKey::{Admin, Allowance, Balance, Metadata, TotalSupply, Paused, Version};
 use storage::MetadataKey::{Decimals, Name, Symbol as SymbolKey};
 
 const BUMP_THRESHOLD: u32 = 120_960;
 const BUMP_AMOUNT: u32 = 518_400;
+const CONTRACT_VERSION: u32 = 1;
 
 fn bump_instance(env: &Env) {
     env.storage().instance().extend_ttl(BUMP_THRESHOLD, BUMP_AMOUNT);
@@ -54,6 +55,7 @@ impl TokenContract {
         env.storage().instance().set(&Metadata(SymbolKey), &symbol);
         env.storage().instance().set(&Metadata(Decimals), &decimals);
         env.storage().instance().set(&TotalSupply, &0i128);
+        env.storage().instance().set(&Version, &CONTRACT_VERSION);
         bump_instance(&env);
         events::initialized(&env, &admin, name, symbol, decimals);
         Ok(())
@@ -131,6 +133,19 @@ impl TokenContract {
     /// Check if the contract is paused.
     pub fn is_paused(env: Env) -> bool {
         env.storage().instance().get(&Paused).unwrap_or(false)
+    }
+
+    /// Return the contract version.
+    pub fn version(env: Env) -> u32 {
+        env.storage().instance().get(&Version).unwrap_or(CONTRACT_VERSION)
+    }
+
+    /// Upgrade the contract to a new WASM hash. Admin only.
+    pub fn upgrade(env: Env, new_wasm_hash: soroban_sdk::BytesN<32>) -> Result<(), TokenError> {
+        let admin = require_admin(&env)?;
+        admin.require_auth();
+        env.deployer().update_current_contract_wasm(new_wasm_hash);
+        Ok(())
     }
 
     pub fn admin(env: Env) -> Address {
