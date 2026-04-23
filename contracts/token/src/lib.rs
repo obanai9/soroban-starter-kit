@@ -169,7 +169,7 @@ impl TokenContract {
         from: Address,
         to: Address,
         amount: i128,
-    ) {
+    ) -> Result<(), TokenError> {
         spender.require_auth();
         let key = Allowance(AllowanceDataKey {
             from: from.clone(),
@@ -181,7 +181,7 @@ impl TokenContract {
             .get(&key)
             .unwrap_or(AllowanceValue { amount: 0, expiration_ledger: 0 });
         if env.ledger().sequence() > val.expiration_ledger || val.amount < amount {
-            panic_with_error!(&env, TokenError::InsufficientAllowance);
+            return Err(TokenError::InsufficientAllowance);
         }
         env.storage().temporary().set(
             &key,
@@ -190,16 +190,14 @@ impl TokenContract {
                 expiration_ledger: val.expiration_ledger,
             },
         );
-        if let Err(e) = Self::transfer_impl(env.clone(), from, to, amount) {
-            panic_with_error!(&env, e);
-        }
+        Self::transfer_impl(env.clone(), from, to, amount)
     }
 
-    pub fn burn(env: Env, from: Address, amount: i128) {
+    pub fn burn(env: Env, from: Address, amount: i128) -> Result<(), TokenError> {
         from.require_auth();
         let balance = Self::balance_of(env.clone(), from.clone());
         if balance < amount {
-            panic_with_error!(&env, TokenError::InsufficientBalance);
+            return Err(TokenError::InsufficientBalance);
         }
         env.storage()
             .persistent()
@@ -210,9 +208,10 @@ impl TokenContract {
         bump_instance(&env);
         env.events()
             .publish((Symbol::new(&env, "burn"), from), amount);
+        Ok(())
     }
 
-    pub fn burn_from(env: Env, spender: Address, from: Address, amount: i128) {
+    pub fn burn_from(env: Env, spender: Address, from: Address, amount: i128) -> Result<(), TokenError> {
         spender.require_auth();
         let key = Allowance(AllowanceDataKey {
             from: from.clone(),
@@ -224,11 +223,11 @@ impl TokenContract {
             .get(&key)
             .unwrap_or(AllowanceValue { amount: 0, expiration_ledger: 0 });
         if env.ledger().sequence() > val.expiration_ledger || val.amount < amount {
-            panic_with_error!(&env, TokenError::InsufficientAllowance);
+            return Err(TokenError::InsufficientAllowance);
         }
         let balance = Self::balance_of(env.clone(), from.clone());
         if balance < amount {
-            panic_with_error!(&env, TokenError::InsufficientBalance);
+            return Err(TokenError::InsufficientBalance);
         }
         env.storage().temporary().set(
             &key,
@@ -246,6 +245,7 @@ impl TokenContract {
         bump_instance(&env);
         env.events()
             .publish((Symbol::new(&env, "burn_from"), from), amount);
+        Ok(())
     }
 
     pub fn decimals(env: Env) -> u32 {
@@ -288,15 +288,21 @@ impl token::TokenInterface for TokenContract {
     }
 
     fn transfer_from(env: Env, spender: Address, from: Address, to: Address, amount: i128) {
-        TokenContract::transfer_from(env, spender, from, to, amount);
+        if let Err(e) = TokenContract::transfer_from(env.clone(), spender, from, to, amount) {
+            panic_with_error!(&env, e);
+        }
     }
 
     fn burn(env: Env, from: Address, amount: i128) {
-        TokenContract::burn(env, from, amount);
+        if let Err(e) = TokenContract::burn(env.clone(), from, amount) {
+            panic_with_error!(&env, e);
+        }
     }
 
     fn burn_from(env: Env, spender: Address, from: Address, amount: i128) {
-        TokenContract::burn_from(env, spender, from, amount);
+        if let Err(e) = TokenContract::burn_from(env.clone(), spender, from, amount) {
+            panic_with_error!(&env, e);
+        }
     }
 
     fn decimals(env: Env) -> u32 {

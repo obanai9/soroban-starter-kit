@@ -47,7 +47,7 @@ impl EscrowContract {
             return Err(EscrowError::InvalidAmount);
         }
         if deadline_ledger < env.ledger().sequence() + MIN_DEADLINE_BUFFER {
-            panic!("Deadline must be at least MIN_DEADLINE_BUFFER ledgers in the future");
+            return Err(EscrowError::InvalidAmount);
         }
         env.storage().instance().set(&Buyer, &buyer);
         env.storage().instance().set(&Seller, &seller);
@@ -210,11 +210,12 @@ impl EscrowContract {
     }
 
     /// Extend storage TTL. Anyone can call this to keep an active escrow alive.
-    pub fn bump(env: Env) {
+    pub fn bump(env: Env) -> Result<(), EscrowError> {
         if !env.storage().instance().has(&State) {
-            panic!("Not initialized");
+            return Err(EscrowError::NotInitialized);
         }
         bump_instance(&env);
+        Ok(())
     }
 
     /// Return full escrow details.
