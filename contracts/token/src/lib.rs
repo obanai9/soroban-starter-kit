@@ -321,7 +321,7 @@ impl TokenContract {
         let key = DataKey::Allowance(AllowanceDataKey { from: from.clone(), spender: spender.clone() });
         let allowance: i128 = env.storage().temporary().get(&key).unwrap_or(0);
         if allowance < amount {
-            panic!("Insufficient allowance");
+            panic_with_error!(&env, TokenError::InsufficientAllowance);
         }
 
         env.storage().temporary().set(&key, &(allowance - amount));
