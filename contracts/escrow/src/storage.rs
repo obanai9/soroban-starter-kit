@@ -1,55 +1,99 @@
 use soroban_sdk::{contracttype, Address};
 
+/// Top-level storage keys used by [`EscrowContract`](crate::EscrowContract).
+///
+/// All keys are stored in instance storage so they share a single TTL bump.
+///
+/// # Examples
+///
+/// ```ignore
+/// env.storage().instance().set(&DataKey::State, &EscrowState::Created);
+/// ```
 #[contracttype]
 #[derive(Clone)]
 pub enum DataKey {
-    /// Buyer's address. Type: `Address`. Storage: instance.
+    /// Instance storage – the buyer's [`Address`].
     Buyer,
-    /// Seller's address. Type: `Address`. Storage: instance.
+    /// Instance storage – the seller's [`Address`].
     Seller,
-    /// Arbiter's address for dispute resolution. Type: `Address`. Storage: instance.
+    /// Instance storage – the arbiter's [`Address`] (used for dispute resolution).
     Arbiter,
-    /// Address of the token contract holding escrowed funds. Type: `Address`. Storage: instance.
+    /// Instance storage – the Soroban token contract [`Address`] used for fund transfers.
     TokenContract,
-    /// Escrowed token amount. Type: `i128`. Storage: instance.
+    /// Instance storage – escrowed token amount as `i128`.
     Amount,
-    /// Ledger sequence number after which refunds become claimable. Type: `u32`. Storage: instance.
+    /// Instance storage – ledger sequence number after which a refund may be requested (`u32`).
     Deadline,
-    /// Current lifecycle state of the escrow. Type: `EscrowState`. Storage: instance.
+    /// Instance storage – current [`EscrowState`] of the escrow lifecycle.
     State,
-    /// Whether the buyer has approved delivery. Type: `bool`. Storage: instance.
+    /// Instance storage – `true` once the buyer has approved delivery (`bool`).
     BuyerApproved,
-    /// Whether the seller has marked delivery complete. Type: `bool`. Storage: instance.
+    /// Instance storage – `true` once the seller has marked goods/services as delivered (`bool`).
     SellerDelivered,
-    /// Whether the contract is paused. Type: `bool`. Storage: instance.
+    /// Instance storage – whether the contract is paused (`bool`).
     Paused,
-    /// Contract version number. Type: `u32`. Storage: instance.
+    /// Instance storage – contract version number (`u32`).
     Version,
 }
 
+/// Lifecycle states of an escrow.
+///
+/// Transitions follow a strict order:
+/// `Created → Funded → Delivered → Completed`
+/// with side exits to `Refunded` or `Cancelled`.
+///
+/// # Examples
+///
+/// ```ignore
+/// let state: EscrowState = env.storage().instance().get(&DataKey::State).unwrap();
+/// assert_eq!(state, EscrowState::Funded);
+/// ```
 #[contracttype]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum EscrowState {
+    /// Escrow has been initialized but not yet funded.
     Created = 0,
+    /// Buyer has transferred tokens to the contract.
     Funded = 1,
+    /// Seller has marked the obligation as delivered.
     Delivered = 2,
+    /// Funds have been released to the seller.
     Disputed = 3,
     Completed = 4,
     Refunded = 5,
     Cancelled = 6,
     Completed = 3,
+    /// Funds have been returned to the buyer.
     Refunded = 4,
+    /// Escrow was cancelled before funding.
+    Cancelled = 5,
     Disputed = 5,
 }
 
+/// Snapshot of all escrow fields returned by
+/// [`EscrowContract::get_escrow_info`](crate::EscrowContract::get_escrow_info).
+///
+/// # Examples
+///
+/// ```ignore
+/// let info: EscrowInfo = escrow_client.get_escrow_info();
+/// assert_eq!(info.state, EscrowState::Funded);
+/// ```
 #[contracttype]
 #[derive(Clone)]
 pub struct EscrowInfo {
+    /// Buyer address.
     pub buyer: Address,
+    /// Seller address.
     pub seller: Address,
+    /// Arbiter address.
     pub arbiter: Address,
+    /// Token contract address.
     pub token_contract: Address,
+    /// Current escrowed amount.
     pub amount: i128,
+    /// Deadline ledger sequence number.
     pub deadline: u32,
+    /// Current lifecycle state.
     pub state: EscrowState,
 }
