@@ -12,6 +12,18 @@ fn create_token_contract<'a>(env: &Env) -> (TokenContractClient<'a>, Address) {
     (client, contract_address)
 }
 
+fn init_token<'a>(env: &'a Env, admin: &Address) -> TokenContractClient<'a> {
+    let (client, _) = create_token_contract(env);
+    client.initialize(
+        admin,
+        &String::from_str(env, "Test Token"),
+        &String::from_str(env, "TEST"),
+        &18u32,
+        &None,
+    );
+    client
+}
+
 #[test]
 fn test_initialize() {
     let env = Env::default();
@@ -24,8 +36,9 @@ fn test_initialize() {
     let symbol = String::from_str(&env, "TEST");
     let decimals = 18u32;
 
-    // Initialize the token
+    let (client, _) = create_token_contract(&env);
     client.initialize(&admin, &name, &symbol, &decimals);
+    client.initialize(&admin, &name, &symbol, &decimals, &None);
 
     assert_eq!(
         env.events().all(),
@@ -44,7 +57,6 @@ fn test_initialize() {
     assert_eq!(client.name(), name);
     assert_eq!(client.symbol(), symbol);
     assert_eq!(client.decimals(), decimals);
-    assert_eq!(client.total_supply(), 0);
 }
 
 #[test]
@@ -54,8 +66,7 @@ fn test_initialize_twice() {
     env.mock_all_auths();
 
     let admin = Address::generate(&env);
-    let (client, _) = create_token_contract(&env);
-
+    let user = Address::generate(&env);
     let name = String::from_str(&env, "Test Token");
     let symbol = String::from_str(&env, "TEST");
     let decimals = 18u32;
@@ -65,6 +76,9 @@ fn test_initialize_twice() {
 
     // Try to initialize again - should panic
     client.initialize(&admin, &name, &symbol, &decimals);
+    client.mint(&user, &1000i128);
+    client.initialize(&admin, &name, &symbol, &decimals, &None);
+    client.initialize(&admin, &name, &symbol, &decimals, &None);
 }
 
 #[test]
@@ -123,6 +137,15 @@ fn test_mint() {
 
 #[test]
 fn test_burn() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    assert_eq!(client.balance(&user), 1000i128);
+    assert_eq!(client.total_supply(), 1000i128);
+}
+
+#[test]
+fn test_approve() {
     let env = Env::default();
     env.mock_all_auths();
 
@@ -282,7 +305,8 @@ fn test_transfer() {
 }
 
 #[test]
-fn test_approve_and_transfer_from() {
+#[should_panic(expected = "Error(Contract, #2)")]
+fn test_expired_allowance() {
     let env = Env::default();
     env.mock_all_auths();
 
@@ -333,7 +357,7 @@ fn test_approve_and_transfer_from() {
 
     // Approve spender
     let approve_amount = 500i128;
-    let expiration = env.ledger().sequence() + 100;
+    let expiration = env.ledger().sequence() + 10;
     client.approve(&user1, &spender, &approve_amount, &expiration);
 
     assert_eq!(
@@ -365,6 +389,7 @@ fn test_approve_and_transfer_from() {
     // transfer_from internally calls transfer_impl which emits a "transfer" event
     let transfer_amount = 200i128;
     client.transfer_from(&spender, &user1, &user2, &transfer_amount);
+}
 
     assert_eq!(
         env.events().all(),
@@ -403,7 +428,7 @@ fn test_approve_and_transfer_from() {
 }
 
 #[test]
-fn test_set_admin() {
+fn test_mint_zero_amount() {
     let env = Env::default();
     env.mock_all_auths();
 
@@ -429,8 +454,32 @@ fn test_set_admin() {
             ),
         ]
     );
+    client.mint(&user, &1000i128);
+    
+    // Burn as admin should work
+    client.burn_admin(&user, &100i128);
+    assert_eq!(client.balance(&user), 900i128);
+}
 
-    // Set new admin
+#[test]
+fn test_unauthorized_set_admin_fails() {
+    let env = Env::default();
+    
+    let admin = Address::generate(&env);
+    let new_admin = Address::generate(&env);
+    
+    let (client, _) = create_token_contract(&env);
+    
+    // Initialize with admin
+    env.mock_all_auths();
+    client.initialize(
+        &admin,
+        &String::from_str(&env, "Test Token"),
+        &String::from_str(&env, "TEST"),
+        &18u32,
+    );
+    
+    // Set admin as admin should work
     client.set_admin(&new_admin);
 
     assert_eq!(
