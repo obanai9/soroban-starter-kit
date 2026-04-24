@@ -26,3 +26,11 @@ Thumbs.db
 
 # Docker
 .docker/
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfplan
+*.tfvars
+!*.tfvars.example
