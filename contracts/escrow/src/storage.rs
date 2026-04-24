@@ -17,7 +17,7 @@ pub enum DataKey {
 }
 
 #[contracttype]
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum EscrowState {
     Created = 0,
     Funded = 1,
