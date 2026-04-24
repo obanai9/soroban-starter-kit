@@ -10,4 +10,5 @@ pub enum TokenError {
     NotInitialized = 5,
     InvalidAmount = 6,
     Overflow = 7,
+    ExceedsMaxSupply = 6,
 }

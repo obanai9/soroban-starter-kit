@@ -13,6 +13,18 @@ fn create_token_contract<'a>(env: &'a Env) -> (TokenContractClient<'a>, Address)
     (client, contract_address)
 }
 
+fn init_token<'a>(env: &'a Env, admin: &Address) -> TokenContractClient<'a> {
+    let (client, _) = create_token_contract(env);
+    client.initialize(
+        admin,
+        &String::from_str(env, "Test Token"),
+        &String::from_str(env, "TEST"),
+        &18u32,
+        &None,
+    );
+    client
+}
+
 #[test]
 fn test_initialize() {
     let env = Env::default();
@@ -25,6 +37,7 @@ fn test_initialize() {
 
     let (client, _) = create_token_contract(&env);
     client.initialize(&admin, &name, &symbol, &decimals);
+    client.initialize(&admin, &name, &symbol, &decimals, &None);
 
     assert_eq!(client.name(), name);
     assert_eq!(client.symbol(), symbol);
@@ -45,6 +58,30 @@ fn test_mint() {
     let (client, _) = create_token_contract(&env);
     client.initialize(&admin, &name, &symbol, &decimals);
     client.mint(&user, &1000i128);
+    client.initialize(&admin, &name, &symbol, &decimals, &None);
+    client.initialize(&admin, &name, &symbol, &decimals, &None);
+}
+
+#[test]
+fn test_mint() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+    let client = init_token(&env, &admin);
+
+    let amount = 1000i128;
+    client.mint(&user, &amount);
+
+    assert_eq!(client.balance(&user), amount);
+    assert_eq!(client.total_supply(), amount);
+}
+
+#[test]
+fn test_burn() {
+    let env = Env::default();
+    env.mock_all_auths();
 
     assert_eq!(client.balance(&user), 1000i128);
     assert_eq!(client.total_supply(), 1000i128);
